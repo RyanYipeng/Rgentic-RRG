@@ -16,10 +16,9 @@ from rag_app import Retriever, QdrantVDB, EmbedData
 # ---------------------
 
 mcp = FastMCP(
-    "MCP-RAG-app",
+    "Rgentic RRG",
     host="127.0.0.1",
     port=8080,
-    timeout=30,  # seconds
 )
 
 load_dotenv()  # load .env if present
@@ -57,47 +56,35 @@ def machine_learning_faq_retrieval_tool(query: str) -> str:
 # ---------------------
 
 @mcp.tool()
-def bright_data_web_search_tool(query: str, num_results: int = 10) -> list[str]:
-    """Search the web at scale using Bright Data's SERP proxy.
-
-    Use this tool for **general or non-ML** queries to gather fresh context
-    from multiple sources via Bright Data's super proxy.
+def serper_web_search_tool(query: str, num_results: int = 10) -> list[str]:
+    """
+    Search the web using Serper.dev (Google SERP API).
 
     Inputs:
-        query: str -> What to search for.
-        num_results: int -> How many organic results to return (default 10).
-
+        query: str -> what to search for
+        num_results: int -> number of results (default 10)
     Output:
-        context: list[str] -> A list of strings formatted as: "<title> — <url>\n<snippet>"
+        list[str] -> "<title> — <url>\n<snippet>"
     """
-    if not isinstance(query, str):
-        raise ValueError("query must be a string")
+    api_key = os.getenv("SERPER_API_KEY")
+    if not api_key:
+        raise RuntimeError("Missing SERPER_API_KEY in .env file.")
 
-    host = os.getenv("BRIGHT_DATA_HOST", "brd.superproxy.io")
-    port = int(os.getenv("BRIGHT_DATA_PORT", "33335"))
-    username = os.getenv("BRIGHT_DATA_USERNAME")
-    password = os.getenv("BRIGHT_DATA_PASSWORD")
-
-    if not username or not password:
-        raise RuntimeError(
-            "Missing Bright Data credentials. Please set BRIGHT_DATA_USERNAME and BRIGHT_DATA_PASSWORD in your environment (.env)."
-        )
-
-    proxy = f"http://{username}:{password}@{host}:{port}"
-    q = urllib.parse.quote_plus(query)
-    url = f"https://www.google.com/search?q={q}&num={num_results}&brd_json=1"
-
-    # Note: Bright Data returns JSON when `brd_json=1` is present.
-    resp = requests.get(url, proxies={"http": proxy, "https": proxy}, timeout=30, verify=False)
+    resp = requests.post(
+        "https://google.serper.dev/search",
+        headers={
+            "X-API-KEY": api_key,
+            "Content-Type": "application/json"
+        },
+        json={"q": query, "num": num_results},
+        timeout=15
+    )
     data = resp.json()
-
-    # Parse organic results
-    organic = data.get("organic", []) or []
     results = []
-    for item in organic[:num_results]:
-        title = item.get("title") or ""
-        link = item.get("url") or ""
-        snippet = item.get("snippet") or item.get("description") or ""
+    for item in data.get("organic", [])[:num_results]:
+        title = item.get("title", "")
+        link = item.get("link", "")
+        snippet = item.get("snippet", "")
         results.append(f"{title} — {link}\n{snippet}")
     return results
 

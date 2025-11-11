@@ -2,7 +2,7 @@
   "mcpServers": {
     "mcp-rag-app": {
       "command": "python",
-      "args": ["/mnt/data/mcp_rag_app/server.py"],
+      "args": ["D:\\Projects\\MCP\\Rgentic RRG\\server.py"],
       "host": "127.0.0.1",
       "port": 8080,
       "timeout": 30000
